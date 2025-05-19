@@ -36,7 +36,6 @@ const ProfileScreen = ({ onLogout }) => {
   };
 
   const loadUserSongs = () => {
-    // Placeholder songs - replace with API call later
     const placeholderSongs = [
       { id: 1, name: 'SongName', genre: 'Genre' },
       { id: 2, name: 'SongName', genre: 'Genre' },
@@ -49,12 +48,10 @@ const ProfileScreen = ({ onLogout }) => {
 
   const handleEditProfile = () => {
     console.log('Edit profile pressed');
-    // Navigate to edit profile screen later
   };
 
   const handleUpload = () => {
     console.log('Upload pressed');
-    // Navigate to upload screen later
   };
 
   const handleSongLike = (songId) => {
@@ -63,7 +60,6 @@ const ProfileScreen = ({ onLogout }) => {
 
   const handleSongAddToPlaylist = (songId) => {
     console.log('Add to playlist:', songId);
-    // Open add to playlist modal later
   };
 
   const handleSongDelete = (songId) => {
