@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     borderRadius: 8,
     padding: 30,
-    elevation: 3, // Android shadow
-    shadowOffset: { width: 0, height: 2 }, // iOS shadow
+    elevation: 3, 
+    shadowOffset: { width: 0, height: 2 }, 
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#ccc',
-    minHeight: 44, // Ensure minimum touch target
+    minHeight: 44, 
   },
   button: {
     backgroundColor: '#333',
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
-    minHeight: 50, // Ensure minimum touch target
+    minHeight: 50, 
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: 'center',
-    minHeight: 44, // Ensure minimum touch target
+    minHeight: 44,
   },
   linkText: {
     color: '#666',
