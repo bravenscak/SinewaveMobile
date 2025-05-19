@@ -3,8 +3,7 @@ import { View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import MainScreen from './src/screens/MainScreen';
-
+import ProfileScreen from './src/screens/ProfileScreen';
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,7 +51,7 @@ export default function App() {
   }
 
   if (isAuthenticated) {
-    return <MainScreen onLogout={handleLogout} />;
+    return <ProfileScreen onLogout={handleLogout} />;
   }
 
   if (currentScreen === 'login') {
