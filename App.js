@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import MainScreen from './src/screens/MainScreen';  
+import UsersScreen from './src/screens/UsersScreen';
+import UserProfileScreen from './src/screens/UserProfileScreen';
+
+const Stack = createNativeStackNavigator();
+
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('login');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,23 +58,43 @@ export default function App() {
     return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
   }
 
-  if (isAuthenticated) {
-    return <ProfileScreen onLogout={handleLogout} />;
-  }
-
-  if (currentScreen === 'login') {
-    return (
-      <LoginScreen
-        onLoginSuccess={handleLoginSuccess}
-        onNavigateToRegister={() => setCurrentScreen('register')}
-      />
-    );
-  }
-
   return (
-    <RegisterScreen
-      onNavigateToLogin={() => setCurrentScreen('login')}
-      onRegisterSuccess={handleLoginSuccess}
-    />
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isAuthenticated ? (
+          <>
+            <Stack.Screen name="Main">
+              {props => <MainScreen {...props} onLogout={handleLogout} />}
+            </Stack.Screen>
+            <Stack.Screen name="Profile">
+              {props => <ProfileScreen {...props} onLogout={handleLogout} />}
+            </Stack.Screen>
+            <Stack.Screen name="Users" component={UsersScreen} />
+            <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Login">
+              {props => (
+                <LoginScreen
+                  {...props}
+                  onLoginSuccess={handleLoginSuccess}
+                  onNavigateToRegister={() => props.navigation.navigate('Register')}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Register">
+              {props => (
+                <RegisterScreen
+                  {...props}
+                  onNavigateToLogin={() => props.navigation.navigate('Login')}
+                  onRegisterSuccess={handleLoginSuccess}
+                />
+              )}
+            </Stack.Screen>
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
