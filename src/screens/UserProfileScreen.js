@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AuthService from '../services/AuthService';
 import {
     View,
     Text,
@@ -28,26 +29,21 @@ export default function UserProfileScreen({ route, navigation }) {
     }, [userId]);
 
     const fetchUserData = async () => {
-        try {
-            const token = await AsyncStorage.getItem("token");
-            const response = await fetch(`${API_URL}/users/${userId}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+    try {
+        const response = await AuthService.authenticatedFetch(`${API_URL}/users/${userId}`);
 
-            if (response.ok) {
-                const data = await response.json();
-                setUserData(data);
-            } else {
-                console.error("Error fetching user data:", response.status);
-                Alert.alert("Error", "Failed to load user profile");
-            }
-        } catch (error) {
-            console.error("Error fetching user data:", error);
-            Alert.alert("Error", "Network error while loading profile");
+        if (response.ok) {
+            const data = await response.json();
+            setUserData(data);
+        } else {
+            console.error("Error fetching user data:", response.status);
+            Alert.alert("Error", "Failed to load user profile");
         }
-    };
+    } catch (error) {
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Network error while loading profile");
+    }
+};
 
     const fetchUserSongs = async () => {
         const placeholderSongs = Array(15)
@@ -62,57 +58,46 @@ export default function UserProfileScreen({ route, navigation }) {
     };
 
     const checkFollowStatus = async () => {
-        try {
-            const token = await AsyncStorage.getItem("token");
-            const response = await fetch(
-                `${API_URL}/users/friends/is-following/${userId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+    try {
+        const response = await AuthService.authenticatedFetch(
+            `${API_URL}/users/friends/is-following/${userId}`
+        );
 
-            if (response.ok) {
-                const data = await response.json();
-                setIsFollowing(data.following);
-            }
-        } catch (error) {
-            console.error("Error checking follow status:", error);
+        if (response.ok) {
+            const data = await response.json();
+            setIsFollowing(data.following);
         }
-    };
+    } catch (error) {
+        console.error("Error checking follow status:", error);
+    }
+};
 
     const toggleFollow = async () => {
-        try {
-            const token = await AsyncStorage.getItem("token");
-            const endpoint = isFollowing
-                ? `${API_URL}/users/friends/unfollow/${userId}`
-                : `${API_URL}/users/friends/follow/${userId}`;
+    try {
+        const endpoint = isFollowing
+            ? `${API_URL}/users/friends/unfollow/${userId}`
+            : `${API_URL}/users/friends/follow/${userId}`;
 
-            const method = isFollowing ? "DELETE" : "POST";
+        const method = isFollowing ? "DELETE" : "POST";
 
-            const response = await fetch(endpoint, {
-                method,
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            });
+        const response = await AuthService.authenticatedFetch(endpoint, {
+            method,
+        });
 
-            if (response.ok) {
-                setIsFollowing(!isFollowing);
-            } else {
-                const errorData = await response.json();
-                Alert.alert(
-                    "Error",
-                    errorData.message || "Failed to update follow status"
-                );
-            }
-        } catch (error) {
-            console.error("Error toggling follow status:", error);
-            Alert.alert("Error", "Network error while updating follow status");
+        if (response.ok) {
+            setIsFollowing(!isFollowing);
+        } else {
+            const errorData = await response.json();
+            Alert.alert(
+                "Error",
+                errorData.message || "Failed to update follow status"
+            );
         }
-    };
+    } catch (error) {
+        console.error("Error toggling follow status:", error);
+        Alert.alert("Error", "Network error while updating follow status");
+    }
+};
 
     const handleSongLike = (songId) => {
         console.log("Like song:", songId);
