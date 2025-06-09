@@ -11,9 +11,9 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import AuthService from '../services/AuthService';
 
 const { width } = Dimensions.get('window');
-const API_URL = 'http://192.168.1.237:8080/api'; 
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
   const [username, setUsername] = useState('');
@@ -21,8 +21,6 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    console.log('Login button pressed'); 
-    
     if (!username.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -30,36 +28,21 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
 
     setLoading(true);
     try {
-      console.log('Attempting login...');
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: username.trim(),
-          password: password,
-        }),
-      });
+      const result = await AuthService.login(username.trim(), password);
 
-      const data = await response.json();
-      console.log('Response:', response.status, data); 
-
-      if (response.ok) {
-        onLoginSuccess(data.token, data.user);
+      if (result.success) {
+        onLoginSuccess(result.user);
       } else {
-        Alert.alert('Login Failed', data.message || 'Invalid credentials');
+        Alert.alert('Login Failed', result.error || 'Invalid credentials');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection.');
+      Alert.alert('Error', error.message || 'Network error. Please check your connection.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleRegisterNavigation = () => {
-    console.log('Navigate to register pressed'); 
     onNavigateToRegister();
   };
 
@@ -156,8 +139,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     borderRadius: 8,
     padding: 30,
-    elevation: 3, 
-    shadowOffset: { width: 0, height: 2 }, 
+    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -177,7 +160,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#ccc',
-    minHeight: 44, 
+    minHeight: 44,
   },
   button: {
     backgroundColor: '#333',
@@ -187,7 +170,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
-    minHeight: 50, 
+    minHeight: 50,
   },
   buttonDisabled: {
     opacity: 0.7,

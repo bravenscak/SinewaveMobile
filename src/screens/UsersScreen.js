@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AuthService from '../services/AuthService';
 import {
     View,
     Text,
@@ -43,16 +44,15 @@ export default function UsersScreen({ navigation }) {
     }, []);
 
     const getCurrentUserData = async () => {
-        try {
-            const userString = await AsyncStorage.getItem("user");
-            if (userString) {
-                const userData = JSON.parse(userString);
-                setCurrentUser(userData);
-            }
-        } catch (error) {
-            console.error("Error getting current user:", error);
+    try {
+        const userData = await AuthService.getUserData();
+        if (userData) {
+            setCurrentUser(userData);
         }
-    };
+    } catch (error) {
+        console.error("Error getting current user:", error);
+    }
+};
 
     const sortUsers = (users, followStatus) => {
         return [...users].sort((a, b) => {
@@ -63,49 +63,43 @@ export default function UsersScreen({ navigation }) {
     };
 
     const fetchUserData = async () => {
-        setLoading(true);
-        try {
-            const token = await AsyncStorage.getItem("token");
-            
-            const [usersResponse, currentUserFollowing] = await Promise.all([
-                fetch(`${API_URL}/users`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }),
-                fetch(`${API_URL}/users/friends/following`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
+    setLoading(true);
+    try {
+        const [usersResponse, currentUserFollowing] = await Promise.all([
+            AuthService.authenticatedFetch(`${API_URL}/users`),
+            AuthService.authenticatedFetch(`${API_URL}/users/friends/following`)
+        ]);
+        
+        if (usersResponse.ok && currentUserFollowing.ok) {
+            const [usersData, followingData] = await Promise.all([
+                usersResponse.json(),
+                currentUserFollowing.json()
             ]);
             
-            if (usersResponse.ok && currentUserFollowing.ok) {
-                const [usersData, followingData] = await Promise.all([
-                    usersResponse.json(),
-                    currentUserFollowing.json()
-                ]);
-                
-                const followStatuses = {};
-                followingData.forEach(user => {
-                    followStatuses[user.id] = true;
-                });
-                
-                const currentUser = await AsyncStorage.getItem("user");
-                const currentUserId = currentUser ? JSON.parse(currentUser).id : null;
-                const filteredUsers = usersData.filter(user => user.id !== currentUserId);
-                
-                const sortedUsers = sortUsers(filteredUsers, followStatuses);
-                
-                setUsers(sortedUsers);
-                setFollowStatus(followStatuses);
-            } else {
-                console.error("Error fetching users:", usersResponse.status);
-                Alert.alert("Error", "Failed to load users");
-            }
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            Alert.alert("Error", "Network error while loading users");
-        } finally {
-            setLoading(false);
+            const followStatuses = {};
+            followingData.forEach(user => {
+                followStatuses[user.id] = true;
+            });
+            
+            const currentUser = await AuthService.getUserData();
+            const currentUserId = currentUser ? currentUser.id : null;
+            const filteredUsers = usersData.filter(user => user.id !== currentUserId);
+            
+            const sortedUsers = sortUsers(filteredUsers, followStatuses);
+            
+            setUsers(sortedUsers);
+            setFollowStatus(followStatuses);
+        } else {
+            console.error("Error fetching users:", usersResponse.status);
+            Alert.alert("Error", "Failed to load users");
         }
-    };
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        Alert.alert("Error", "Network error while loading users");
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleClearSearch = () => {
         setSearchValue("");
@@ -113,88 +107,72 @@ export default function UsersScreen({ navigation }) {
     };
 
     const handleSearch = async () => {
-        if (!searchValue.trim()) {
-            fetchUserData();
-            return;
-        }
+    if (!searchValue.trim()) {
+        fetchUserData();
+        return;
+    }
 
-        try {
-            setLoading(true);
-            const token = await AsyncStorage.getItem("token");
+    try {
+        setLoading(true);
+        const response = await AuthService.authenticatedFetch(
+            `${API_URL}/users/search?username=${encodeURIComponent(searchValue)}`
+        );
 
-            const response = await fetch(
-                `${API_URL}/users/search?username=${encodeURIComponent(
-                    searchValue
-                )}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
+        if (response.ok) {
+            const searchResults = await response.json();
+            const currentUser = await AuthService.getUserData();
+            const currentUserId = currentUser ? currentUser.id : null;
+            const filteredResults = searchResults.filter(
+                (user) => user.id !== currentUserId
             );
 
-            if (response.ok) {
-                const searchResults = await response.json();
-
-                const currentUser = await AsyncStorage.getItem("user");
-                const currentUserId = currentUser
-                    ? JSON.parse(currentUser).id
-                    : null;
-                const filteredResults = searchResults.filter(
-                    (user) => user.id !== currentUserId
-                );
-
-                const sortedResults = sortUsers(filteredResults, followStatus);
-
-                setUsers(sortedResults);
-            }
-        } catch (error) {
-            console.error("Error searching users:", error);
-        } finally {
-            setLoading(false);
+            const sortedResults = sortUsers(filteredResults, followStatus);
+            setUsers(sortedResults);
         }
-    };
+    } catch (error) {
+        console.error("Error searching users:", error);
+        Alert.alert("Error", "Network error while searching users");
+    } finally {
+        setLoading(false);
+    }
+};
 
     const toggleFollow = async (userId) => {
-        try {
-            const token = await AsyncStorage.getItem("token");
-            const isFollowing = followStatus[userId];
+    try {
+        const isFollowing = followStatus[userId];
+        const endpoint = isFollowing
+            ? `${API_URL}/users/friends/unfollow/${userId}`
+            : `${API_URL}/users/friends/follow/${userId}`;
 
-            const endpoint = isFollowing
-                ? `${API_URL}/users/friends/unfollow/${userId}`
-                : `${API_URL}/users/friends/follow/${userId}`;
+        const method = isFollowing ? "DELETE" : "POST";
 
-            const method = isFollowing ? "DELETE" : "POST";
+        const response = await AuthService.authenticatedFetch(endpoint, {
+            method,
+        });
 
-            const response = await fetch(endpoint, {
-                method,
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
+        if (response.ok) {
+            setFollowStatus((prev) => ({
+                ...prev,
+                [userId]: !isFollowing,
+            }));
+            
+            const sortedUsers = sortUsers(users, {
+                ...followStatus,
+                [userId]: !isFollowing
             });
-
-            if (response.ok) {
-                setFollowStatus((prev) => ({
-                    ...prev,
-                    [userId]: !isFollowing,
-                }));
-                
-                const sortedUsers = sortUsers(users, {
-                    ...followStatus,
-                    [userId]: !isFollowing
-                });
-                setUsers(sortedUsers);
-            } else {
-                const errorData = await response.json();
-                Alert.alert(
-                    "Error",
-                    errorData.message || "Failed to update follow status"
-                );
-            }
-        } catch (error) {
-            console.error("Error toggling follow status:", error);
-            Alert.alert("Error", "Network error while updating follow status");
+            setUsers(sortedUsers);
+        } else {
+            const errorData = await response.json();
+            Alert.alert(
+                "Error",
+                errorData.message || "Failed to update follow status"
+            );
         }
-    };
+    } catch (error) {
+        console.error("Error toggling follow status:", error);
+        Alert.alert("Error", "Network error while updating follow status");
+    }
+};
 
     const navigateToSongs = () => {
         navigation.navigate("Main");

@@ -11,8 +11,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-
-const API_URL = 'http://192.168.1.237:8080/api'; 
+import AuthService from '../services/AuthService';
 
 export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess }) {
   const [formData, setFormData] = useState({
@@ -46,22 +45,14 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const result = await AuthService.register(formData);
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         Alert.alert('Success', 'Account created successfully!', [
-          { text: 'OK', onPress: () => onRegisterSuccess(data.token, data.user) }
+          { text: 'OK', onPress: () => onRegisterSuccess(result.user) }
         ]);
       } else {
-        Alert.alert('Registration Failed', data.message || 'Something went wrong');
+        Alert.alert('Registration Failed', result.error || 'Something went wrong');
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -88,6 +79,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
               onChangeText={(value) => handleInputChange('firstname', value)}
               placeholder="Value"
               autoCapitalize="words"
+              editable={!loading}
             />
           </View>
 
@@ -99,6 +91,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
               onChangeText={(value) => handleInputChange('lastname', value)}
               placeholder="Value"
               autoCapitalize="words"
+              editable={!loading}
             />
           </View>
 
@@ -111,6 +104,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
               placeholder="Value"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
           </View>
 
@@ -124,6 +118,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
           </View>
 
@@ -135,6 +130,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
               onChangeText={(value) => handleInputChange('password', value)}
               placeholder="Value"
               secureTextEntry
+              editable={!loading}
             />
           </View>
 
@@ -153,6 +149,7 @@ export default function RegisterScreen({ onNavigateToLogin, onRegisterSuccess })
           <TouchableOpacity
             style={styles.linkButton}
             onPress={onNavigateToLogin}
+            disabled={loading}
           >
             <Text style={styles.linkText}>
               Already have an account? Login here
