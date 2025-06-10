@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://192.168.1.237:8080/api';
+const API_URL = 'http://192.168.1.77:8080/api';
 
 class AuthService {
   static ACCESS_TOKEN_KEY = 'access_token';
@@ -177,6 +177,14 @@ class AuthService {
 
     return response;
   }
+//TODO fix this, post does not work
+  static async authenticatedPost(url, body) {
+    return AuthService.authenticatedFetch(url, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
 }
 
 export default AuthService;

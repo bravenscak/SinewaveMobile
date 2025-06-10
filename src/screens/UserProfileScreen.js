@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "http://192.168.1.237:8080/api";
+const API_URL = "http://192.168.1.77:8080/api";
 
 export default function UserProfileScreen({ route, navigation }) {
     const { userId } = route.params;
@@ -212,20 +212,10 @@ export default function UserProfileScreen({ route, navigation }) {
                 <View style={styles.playerControls}>
                     <TouchableOpacity
                         style={styles.controlButton}
-                        onPress={() => console.log("Like song")}
-                    >
-                        <Text
-                            style={[styles.controlIcon, { color: "#e74c3c" }]}
-                        >
-                            ❤
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.controlButton}
                         onPress={() => console.log("Add to playlist")}
                     >
                         <Text style={[styles.controlIcon, { color: "#000" }]}>
-                            +
+                            ➕
                         </Text>
                     </TouchableOpacity>
                 </View>

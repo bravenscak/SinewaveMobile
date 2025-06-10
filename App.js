@@ -10,6 +10,9 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import MainScreen from './src/screens/MainScreen';  
 import UsersScreen from './src/screens/UsersScreen';
 import UserProfileScreen from './src/screens/UserProfileScreen';
+import MyPlaylistsScreen from './src/screens/MyPlaylistsScreen';
+import PlaylistCreateScreen from './src/screens/PlaylistCreateScreen';
+import PlaylistDetailsScreen from './src/screens/PlaylistDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -94,8 +97,11 @@ export default function App() {
                   userData={userData}
                 />
               )}
-            </Stack.Screen>
+            </Stack.Screen>            
             <Stack.Screen name="Users" component={UsersScreen} />
+            <Stack.Screen name="MyPlaylists" component={MyPlaylistsScreen} />
+            <Stack.Screen name="PlaylistCreate" component={PlaylistCreateScreen}/>
+            <Stack.Screen name="PlaylistDetails" component={PlaylistDetailsScreen}/>
             <Stack.Screen name="UserProfile" component={UserProfileScreen} />
           </>
         ) : (

@@ -37,11 +37,11 @@ const ProfileScreen = ({ onLogout }) => {
 
   const loadUserSongs = () => {
     const placeholderSongs = [
-      { id: 1, name: 'SongName', genre: 'Genre' },
-      { id: 2, name: 'SongName', genre: 'Genre' },
-      { id: 3, name: 'SongName', genre: 'Genre' },
-      { id: 4, name: 'SongName', genre: 'Genre' },
-      { id: 5, name: 'SongName', genre: 'Genre' },
+      { id: 1, name: 'SongName1', genre: 'Genre' },
+      { id: 2, name: 'SongName2', genre: 'Genre' },
+      { id: 3, name: 'SongName3', genre: 'Genre' },
+      { id: 4, name: 'SongName4', genre: 'Genre' },
+      { id: 5, name: 'SongName5', genre: 'Genre' },
     ];
     setUserSongs(placeholderSongs);
   };

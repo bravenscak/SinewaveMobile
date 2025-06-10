@@ -15,7 +15,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from '@react-navigation/native'; 
 
-const API_URL = "http://192.168.1.237:8080/api";
+const API_URL = "http://192.168.1.77:8080/api";
 
 export default function UsersScreen({ navigation }) {
     const [users, setUsers] = useState([]);
@@ -178,6 +178,10 @@ export default function UsersScreen({ navigation }) {
         navigation.navigate("Main");
     };
 
+    const navigateToMyPlaylists = () => {
+        navigation.navigate("MyPlaylists");
+    };
+
     const handleUserPress = (user) => {
         navigation.navigate("UserProfile", { userId: user.id });
     };
@@ -283,20 +287,10 @@ export default function UsersScreen({ navigation }) {
                 <View style={styles.playerControls}>
                     <TouchableOpacity
                         style={styles.controlButton}
-                        onPress={() => console.log("Like song")}
-                    >
-                        <Text
-                            style={[styles.controlIcon, { color: "#e74c3c" }]}
-                        >
-                            ❤
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.controlButton}
                         onPress={() => console.log("Add to playlist")}
                     >
                         <Text style={[styles.controlIcon, { color: "#000" }]}>
-                            +
+                            ➕
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -328,7 +322,7 @@ export default function UsersScreen({ navigation }) {
             <View style={styles.footer}>
                 <TouchableOpacity
                     style={styles.footerTab}
-                    onPress={() => navigation.navigate("Playlists")}
+                    onPress={navigateToMyPlaylists}
                 >
                     <Text style={styles.footerTabText}>Playlists</Text>
                 </TouchableOpacity>
