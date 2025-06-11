@@ -13,7 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/FontAwesome";
 import AuthService from "../services/AuthService";
 
-const API_URL = "http://192.168.1.77:8080/api";
+const API_URL = "https://oicar-sinewave.onrender.com/api";
 
 export default function MyPlaylistsScreen({ navigation }) {
   const [user, setUser] = useState(null);

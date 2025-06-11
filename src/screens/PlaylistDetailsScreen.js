@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import AuthService from "../services/AuthService";
 
-const API_URL = "http://192.168.1.77:8080/api";
+const API_URL = "https://oicar-sinewave.onrender.com/api";
 
 export default function PlaylistDetailsScreen({ route, navigation }) {
   const { playlistId } = route.params;

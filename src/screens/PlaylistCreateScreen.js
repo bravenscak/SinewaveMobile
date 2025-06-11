@@ -14,7 +14,7 @@ import {
   Button,
 } from "react-native";
 
-const API_URL = 'http://192.168.1.77:8080/api';
+const API_URL = 'https://oicar-sinewave.onrender.com/api';
 
 export default function PlaylistCreateScreen({ navigation }) {
   const [name, setName] = useState("");

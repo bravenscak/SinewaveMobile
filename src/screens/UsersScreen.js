@@ -15,7 +15,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 
-const API_URL = "http://192.168.1.77:8080/api";
+const API_URL = "https://oicar-sinewave.onrender.com/api";
 
 export default function UsersScreen({ navigation }) {
   const [users, setUsers] = useState([]);
