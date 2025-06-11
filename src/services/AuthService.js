@@ -1,11 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = 'http://192.168.1.237:8080/api';
+const API_URL = "https://oicar-sinewave.onrender.com/api";
 
 class AuthService {
-  static ACCESS_TOKEN_KEY = 'access_token';
-  static REFRESH_TOKEN_KEY = 'refresh_token';
-  static USER_DATA_KEY = 'user_data';
+  static ACCESS_TOKEN_KEY = "access_token";
+  static REFRESH_TOKEN_KEY = "refresh_token";
+  static USER_DATA_KEY = "user_data";
 
   static async getAccessToken() {
     try {
@@ -36,13 +36,18 @@ class AuthService {
     try {
       const promises = [
         AsyncStorage.setItem(AuthService.ACCESS_TOKEN_KEY, accessToken),
-        AsyncStorage.setItem(AuthService.USER_DATA_KEY, JSON.stringify(userData))
+        AsyncStorage.setItem(
+          AuthService.USER_DATA_KEY,
+          JSON.stringify(userData)
+        ),
       ];
-      
+
       if (refreshToken) {
-        promises.push(AsyncStorage.setItem(AuthService.REFRESH_TOKEN_KEY, refreshToken));
+        promises.push(
+          AsyncStorage.setItem(AuthService.REFRESH_TOKEN_KEY, refreshToken)
+        );
       }
-      
+
       await Promise.all(promises);
     } catch (error) {
       throw error;
@@ -56,46 +61,49 @@ class AuthService {
 
   static async login(username, password) {
     try {
-      console.log('Attempting login to:', `${API_URL}/mobile/auth/login`);
-      
+      console.log("Attempting login to:", `${API_URL}/mobile/auth/login`);
+
       const response = await fetch(`${API_URL}/mobile/auth/login`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('Login response status:', response.status);
+      console.log("Login response status:", response.status);
 
       const responseText = await response.text();
-      console.log('Login response text:', responseText.substring(0, 100));
-      
+      console.log("Login response text:", responseText.substring(0, 100));
+
       if (!responseText) {
-        throw new Error('Server returned empty response');
+        throw new Error("Server returned empty response");
       }
 
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
-        throw new Error('Invalid response from server');
+        throw new Error("Invalid response from server");
       }
 
       if (!response.ok) {
-        const errorMessage = data.message || data.error || `Login failed. Status: ${response.status}`;
+        const errorMessage =
+          data.message ||
+          data.error ||
+          `Login failed. Status: ${response.status}`;
         throw new Error(errorMessage);
       }
 
       if (data.token && data.user) {
         await AuthService.setTokens(data.token, data.refreshToken, data.user);
-        console.log('Login successful, tokens saved');
+        console.log("Login successful, tokens saved");
         return { success: true, user: data.user };
       } else {
-        throw new Error('Invalid response format from server');
+        throw new Error("Invalid response format from server");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       return { success: false, error: error.message };
     }
   }
@@ -103,9 +111,9 @@ class AuthService {
   static async register(userData) {
     try {
       const response = await fetch(`${API_URL}/mobile/auth/register`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(userData),
       });
@@ -114,13 +122,13 @@ class AuthService {
       const data = responseText ? JSON.parse(responseText) : {};
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(data.message || "Registration failed");
       }
 
       if (data.token && data.user) {
         await AuthService.setTokens(data.token, data.refreshToken, data.user);
       }
-      
+
       return { success: true, user: data.user };
     } catch (error) {
       return { success: false, error: error.message };
@@ -130,13 +138,13 @@ class AuthService {
   static async logout() {
     try {
       const refreshToken = await AuthService.getRefreshToken();
-      
+
       if (refreshToken) {
         try {
           await fetch(`${API_URL}/mobile/auth/logout`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({ refreshToken }),
           });
@@ -146,9 +154,8 @@ class AuthService {
       await Promise.all([
         AsyncStorage.removeItem(AuthService.ACCESS_TOKEN_KEY),
         AsyncStorage.removeItem(AuthService.REFRESH_TOKEN_KEY),
-        AsyncStorage.removeItem(AuthService.USER_DATA_KEY)
+        AsyncStorage.removeItem(AuthService.USER_DATA_KEY),
       ]);
-
     } catch (error) {}
   }
 
@@ -156,13 +163,13 @@ class AuthService {
     let accessToken = await AuthService.getAccessToken();
 
     if (!accessToken) {
-      throw new Error('No access token available');
+      throw new Error("No access token available");
     }
 
     const headers = {
       ...options.headers,
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
     };
 
     let response = await fetch(url, {
@@ -172,10 +179,18 @@ class AuthService {
 
     if (response.status === 401) {
       await AuthService.logout();
-      throw new Error('Session expired. Please login again.');
+      throw new Error("Session expired. Please login again.");
     }
 
     return response;
+  }
+
+  //TODO fix this, post does not work
+  static async authenticatedPost(url, body) {
+    return AuthService.authenticatedFetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 }
 
