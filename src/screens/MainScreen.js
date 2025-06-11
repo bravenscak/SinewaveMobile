@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Audio } from 'expo-av';
 import AuthService from "../services/AuthService";
 import {
   View,
@@ -9,6 +10,9 @@ import {
   Image,
   TextInput,
   FlatList,
+  Modal,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -19,7 +23,56 @@ export default function MainScreen({ onLogout, navigation }) {
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchValue, setSearchValue] = useState("");
+  const [user, setUser] = useState(null);
+  const [playlists, setPlaylists] = useState([]);
+  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
+  const [selectedSong, setSelectedSong] = useState(null);
+  const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
+  
+  // New state for audio playback
+  const [currentSong, setCurrentSong] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [sound, setSound] = useState(null);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [sliderValue, setSliderValue] = useState(0);
+
+  // Initialize audio session
   useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+        console.log("Audio mode configured");
+      } catch (error) {
+        console.error("Failed to configure audio mode:", error);
+      }
+    };
+    
+    setupAudio();
+  }, []);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await AuthService.authenticatedFetch(
+          `${API_URL}/users/me`
+        );
+        if (!response.ok) throw new Error("Failed to fetch user data");
+        const data = await response.json();
+        setUser(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     const fetchSongs = async () => {
       try {
         const response = await AuthService.authenticatedFetch(
@@ -34,9 +87,35 @@ export default function MainScreen({ onLogout, navigation }) {
         setLoading(false);
       }
     };
-
+    
     fetchSongs();
+    fetchUserData();
+    
+    // Cleanup audio resources when component unmounts
+    return () => {
+      if (sound) {
+        console.log("Unloading Sound");
+        sound.unloadAsync();
+      }
+    };
   }, []);
+  
+  const fetchPlaylists = async () => {
+    setLoadingPlaylists(true);
+    try {
+      const response = await AuthService.authenticatedFetch(
+        `${API_URL}/playlists`
+      );
+      if (!response.ok) throw new Error("Failed to fetch playlists");
+      const data = await response.json();
+      setPlaylists(data);
+    } catch (error) {
+      console.error("Error fetching playlists:", error);
+      Alert.alert("Error", "Failed to fetch playlists");
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  };
   const navigateToPlaylists = () => {
     setActiveTab("myplaylists");
     navigation.navigate("MyPlaylists");
@@ -67,26 +146,146 @@ export default function MainScreen({ onLogout, navigation }) {
     } catch (error) {
       console.error("Error getting user data:", error);
     }
+  };  // Function to load and play a song
+  const playSong = async (song) => {
+    try {
+      // Stop current song if one is playing
+      if (sound) {
+        await sound.unloadAsync();
+      }
+      
+      // Mark song as playing
+      await AuthService.authenticatedFetch(
+        `${API_URL}/songs/${song.id}/play`,
+        {
+          method: "POST",
+        }
+      );
+      
+      // Update UI before starting to stream
+      setCurrentSong(song);
+      setIsPlaying(true);
+      
+      // Create and configure the sound object
+      console.log(`Streaming from ${API_URL}/songs/stream/${song.id}`);
+      
+      // Load and play the audio
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: `${API_URL}/songs/stream/${song.id}` },
+        { shouldPlay: true },
+        onPlaybackStatusUpdate
+      );
+      
+      setSound(newSound);
+    } catch (error) {
+      console.error("Error playing song:", error);
+      Alert.alert("Error", "Failed to play the song");
+      setIsPlaying(false);
+    }
   };
+  
+  // Monitor playback status
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      setIsPlaying(status.isPlaying);
+      setPosition(status.positionMillis);
+      setDuration(status.durationMillis);
+      setSliderValue(status.positionMillis / status.durationMillis);
+
+      // Handle when audio finishes playing
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  // Handle play button click
+  const handlePlaySong = (song) => {
+    playSong(song);
+  };
+  
+  // Toggle between play and pause
+  const togglePlayPause = async () => {
+    if (sound) {
+      if (isPlaying) {
+        await sound.pauseAsync();
+      } else {
+        await sound.playAsync();
+      }
+    }
+  };
+  
+  // Seek to position
+  const seekToPosition = async (value) => {
+    if (sound && duration) {
+      const newPosition = value * duration;
+      await sound.setPositionAsync(newPosition);
+    }
+  };
+  
+  const addSongToPlaylist = async (playlistId, songId) => {
+    try {
+      const playlistSongDto = {
+        playlistId: playlistId,
+        songId: songId
+      };
+      
+      const response = await AuthService.authenticatedFetch(
+        `${API_URL}/playlists/songs`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(playlistSongDto)
+        }
+      );
+      
+      if (!response.ok) throw new Error("Failed to add song to playlist" + response.status);
+      Alert.alert("Success", "Song successfully added to playlist");
+      setPlaylistModalVisible(false);
+    } catch (error) {
+      console.error("Error adding song to playlist:", error);
+      Alert.alert("Error", "Failed to add song to playlist");
+    }
+  };
+  
+  const openPlaylistModal = (song) => {
+    setSelectedSong(song);
+    fetchPlaylists();
+    setPlaylistModalVisible(true);
+  };
+  
+  const handleAddSongToPlaylist = (playlistId) => {
+    if (selectedSong) {
+      addSongToPlaylist(playlistId, selectedSong.id);
+    } else {
+      Alert.alert("Error", "No song selected to add to playlist");
+    }
+  };
+
+
+  useEffect(() => {
+    // Cleanup function to stop and unload the sound when the component unmounts or when the song changes
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <View style={styles.profileSection}>
+                  <View style={styles.avatarContainer}>
+                    <View style={styles.avatar} />
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.username}>{user?.username}</Text>
+                  </View>
+                </View>
         <Text style={styles.headerTitle}>SineWave</Text>
-        <TouchableOpacity
-          style={styles.profileDetailsButton}
-          onPress={navigateToProfile}
-        >
-          <Image
-            source={{ uri: null }}
-            style={styles.avatar}
-            defaultSource={{
-              uri: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNGMEYwRjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM3LjUiIHI9IjEyLjUiIGZpbGw9IiNEMEQwRDAiLz48cGF0aCBkPSJNMjUgNzVjMC0xMy44IDExLjItMjUgMjUtMjVzMjUgMTEuMiAyNSAyNXYxMEgyNVY3NXoiIGZpbGw9IiNEMEQwRDAiLz48L3N2Zz4=",
-            }}
-          />
-          <Text style={styles.logoutButtonText}>Profile</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
@@ -124,19 +323,28 @@ export default function MainScreen({ onLogout, navigation }) {
             data={songs}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <View style={styles.songItem}>
+              <View style={[styles.songItem, currentSong?.id === item.id && styles.currentlyPlayingSong]}>
                 <View style={styles.songInfo}>
                   <Text style={styles.songTitle}>{item.title}</Text>
                   <Text style={styles.artistName}>{item.artistName}</Text>
-                </View>
-                <TouchableOpacity
+                </View>                <TouchableOpacity
                   style={styles.playSongButton}
-                  onPress={() => {
-                    // Add play functionality here
-                  }}
+                  onPress={() => openPlaylistModal(item)}
                 >
-                  <Text style={styles.playSongButtonText}>▶</Text>
+                  <Text style={styles.playSongButtonText}>➕</Text>
+                </TouchableOpacity>                <TouchableOpacity
+                  style={styles.playSongButton}
+                  onPress={() => currentSong?.id === item.id && isPlaying 
+                    ? togglePlayPause() 
+                    : handlePlaySong(item)}
+                >
+                  <Text style={styles.playSongButtonText}>
+                    {currentSong?.id === item.id && isPlaying ? "⏸" : "▶"}
+                  </Text>
                 </TouchableOpacity>
+                {currentSong?.id === item.id && (
+                  <Text style={styles.nowPlayingIndicator}>Now Playing</Text>
+                )}
               </View>
             )}
             contentContainerStyle={styles.songsList}
@@ -146,49 +354,100 @@ export default function MainScreen({ onLogout, navigation }) {
               </View>
             }
           />
-        )}
-      </View>
+        )}      </View>
 
-      {/* Player Footer */}
-      <View style={styles.playerFooter}>
-        <View style={styles.playerInfo}>
-          <Text style={styles.playerIcon}>♪</Text>
-          <View style={styles.playerText}>
-            <Text style={styles.songName}>Song name</Text>
-            <Text style={styles.artistName}>Artist</Text>
+      {/* Playlist Selection Modal */}
+      <Modal
+        visible={playlistModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setPlaylistModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add to Playlist</Text>
+              <TouchableOpacity
+                onPress={() => setPlaylistModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingPlaylists ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#00FFFF" />
+                <Text>Loading playlists...</Text>
+              </View>
+            ) : playlists.length > 0 ? (
+              <FlatList
+                data={playlists}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.playlistItem}
+                    onPress={() => handleAddSongToPlaylist(item.id)}
+                  >
+                    <Text style={styles.playlistName}>{item.name}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <View style={styles.emptyPlaylistsContainer}>
+                <Text style={styles.emptyPlaylistsText}>
+                  You don't have any playlists yet
+                </Text>
+                <TouchableOpacity
+                  style={styles.createPlaylistButton}
+                  onPress={() => {
+                    setPlaylistModalVisible(false);
+                    navigation.navigate("PlaylistCreate");
+                  }}
+                >
+                  <Text style={styles.createPlaylistButtonText}>
+                    Create a Playlist
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
+      </Modal>      {/* Player Footer - Only show if a song has been selected */}
+      {currentSong && (
+        <View style={styles.playerFooter}>
+          <View style={styles.playerInfo}>
+            <Text style={styles.playerIcon}>♪</Text>
+            <View style={styles.playerText}>
+              <Text style={styles.songName}>{currentSong.title}</Text>
+              <Text style={styles.artistName}>{currentSong.artistName}</Text>
+            </View>
+          </View>
 
-        <View style={styles.playerControls}>
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={() => console.log("Add to playlist")}
-          >
-            <Text style={[styles.controlIcon, { color: "#000" }]}>➕</Text>
-          </TouchableOpacity>
+          <View style={styles.playerMainControls}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={() => console.log("Previous")}
+            >
+              <Text style={styles.controlIcon}>⏪</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.controlButton, styles.playButton]}
+              onPress={togglePlayPause}
+            >
+              <Text style={[styles.controlIcon, styles.playIcon]}>
+                {isPlaying ? "⏸" : "▶"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={() => console.log("Next")}
+            >
+              <Text style={styles.controlIcon}>⏩</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <View style={styles.playerMainControls}>
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={() => console.log("Previous")}
-          >
-            <Text style={styles.controlIcon}>⏪</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.controlButton, styles.playButton]}
-            onPress={() => console.log("Play/Pause")}
-          >
-            <Text style={[styles.controlIcon, styles.playIcon]}>▶</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={() => console.log("Next")}
-          >
-            <Text style={styles.controlIcon}>⏩</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      )}
 
       {/* Bottom Navigation */}
       <View style={styles.footer}>
@@ -295,6 +554,15 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  currentlyPlayingSong: {
+    backgroundColor: "#f0ffff",
+    borderWidth: 1,
+    borderColor: "#00FFFF",
+  },
+  nowPlayingIndicator: {
+    color: "#00FFFF",
+    fontWeight: "bold",
+  },
   songInfo: {
     flex: 1,
   },
@@ -369,8 +637,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  playButton: {
+  },  playButton: {
     backgroundColor: "#fff",
     borderRadius: 25,
     width: 50,
@@ -385,6 +652,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  pauseButton: {
+    backgroundColor: "#f1f1f1",
   },
   controlIcon: {
     fontSize: 18,
@@ -461,9 +731,81 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-  },
-  searchIcon: {
+  },  searchIcon: {
     fontSize: 20,
     color: "#333",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    width: "90%",
+    maxHeight: "80%",
+    padding: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  closeButton: {
+    padding: 5,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: "#666",
+  },
+  playlistItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  playlistName: {
+    fontSize: 16,
+    color: "#333",
+  },
+  emptyPlaylistsContainer: {
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyPlaylistsText: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  createPlaylistButton: {
+    backgroundColor: "#00FFFF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  createPlaylistButtonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

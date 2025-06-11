@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, { useState, useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import AuthService from './src/services/AuthService';
-import LoginScreen from './src/screens/LoginScreen';
-import RegisterScreen from './src/screens/RegisterScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import MainScreen from './src/screens/MainScreen';  
-import UsersScreen from './src/screens/UsersScreen';
-import UserProfileScreen from './src/screens/UserProfileScreen';
-import MyPlaylistsScreen from './src/screens/MyPlaylistsScreen';
-import PlaylistCreateScreen from './src/screens/PlaylistCreateScreen';
-import PlaylistDetailsScreen from './src/screens/PlaylistDetailsScreen';
+import AuthService from "./src/services/AuthService";
+import LoginScreen from "./src/screens/LoginScreen";
+import RegisterScreen from "./src/screens/RegisterScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+import MainScreen from "./src/screens/MainScreen";
+import UsersScreen from "./src/screens/UsersScreen";
+import UserProfileScreen from "./src/screens/UserProfileScreen";
+import MyPlaylistsScreen from "./src/screens/MyPlaylistsScreen";
+import PlaylistCreateScreen from "./src/screens/PlaylistCreateScreen";
+import PlaylistDetailsScreen from "./src/screens/PlaylistDetailsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,14 +28,14 @@ export default function App() {
   const checkAuthStatus = async () => {
     try {
       const isAuth = await AuthService.isAuthenticated();
-      
+
       if (isAuth) {
         const user = await AuthService.getUserData();
         setUserData(user);
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+      console.error("Error checking auth status:", error);
       // Ako ima grešku, odjavi korisnika
       await handleLogout();
     } finally {
@@ -48,7 +48,7 @@ export default function App() {
       setUserData(user);
       setIsAuthenticated(true);
     } catch (error) {
-      console.error('Error handling login success:', error);
+      console.error("Error handling login success:", error);
     }
   };
 
@@ -58,18 +58,20 @@ export default function App() {
       setUserData(null);
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error("Error during logout:", error);
     }
   };
 
   if (isLoading) {
     return (
-      <View style={{ 
-        flex: 1, 
-        backgroundColor: '#fff', 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-      }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#fff",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <ActivityIndicator size="large" color="#00FFFF" />
       </View>
     );
@@ -81,45 +83,53 @@ export default function App() {
         {isAuthenticated ? (
           <>
             <Stack.Screen name="Main">
-              {props => (
-                <MainScreen 
-                  {...props} 
+              {(props) => (
+                <MainScreen
+                  {...props}
                   onLogout={handleLogout}
                   userData={userData}
                 />
               )}
             </Stack.Screen>
             <Stack.Screen name="Profile">
-              {props => (
-                <ProfileScreen 
-                  {...props} 
+              {(props) => (
+                <ProfileScreen
+                  {...props}
                   onLogout={handleLogout}
                   userData={userData}
                 />
               )}
-            </Stack.Screen>            
+            </Stack.Screen>
             <Stack.Screen name="Users" component={UsersScreen} />
             <Stack.Screen name="MyPlaylists" component={MyPlaylistsScreen} />
-            <Stack.Screen name="PlaylistCreate" component={PlaylistCreateScreen}/>
-            <Stack.Screen name="PlaylistDetails" component={PlaylistDetailsScreen}/>
+            <Stack.Screen
+              name="PlaylistCreate"
+              component={PlaylistCreateScreen}
+            />
+            <Stack.Screen
+              name="PlaylistDetails"
+              component={PlaylistDetailsScreen}
+            />
             <Stack.Screen name="UserProfile" component={UserProfileScreen} />
           </>
         ) : (
           <>
             <Stack.Screen name="Login">
-              {props => (
+              {(props) => (
                 <LoginScreen
                   {...props}
                   onLoginSuccess={handleLoginSuccess}
-                  onNavigateToRegister={() => props.navigation.navigate('Register')}
+                  onNavigateToRegister={() =>
+                    props.navigation.navigate("Register")
+                  }
                 />
               )}
             </Stack.Screen>
             <Stack.Screen name="Register">
-              {props => (
+              {(props) => (
                 <RegisterScreen
                   {...props}
-                  onNavigateToLogin={() => props.navigation.navigate('Login')}
+                  onNavigateToLogin={() => props.navigation.navigate("Login")}
                   onRegisterSuccess={handleLoginSuccess}
                 />
               )}

@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  Button,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/FontAwesome";
@@ -18,11 +20,31 @@ export default function MyPlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("myplaylists");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshPlaylists = async () => {
+    setRefreshing(true);
+    try {
+      const response = await AuthService.authenticatedFetch(
+        `${API_URL}/playlists`
+      );
+      if (!response.ok) throw new Error("Failed to fetch playlists");
+      const data = await response.json();
+      setPlaylists(data);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to refresh playlists");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await AuthService.authenticatedFetch(`${API_URL}/users/me`);
+        const response = await AuthService.authenticatedFetch(
+          `${API_URL}/users/me`
+        );
         if (!response.ok) throw new Error("Failed to fetch user data");
         const data = await response.json();
         setUser(data);
@@ -34,7 +56,9 @@ export default function MyPlaylistsScreen({ navigation }) {
     };
     const fetchPlaylists = async () => {
       try {
-        const response = await AuthService.authenticatedFetch(`${API_URL}/playlists`);
+        const response = await AuthService.authenticatedFetch(
+          `${API_URL}/playlists`
+        );
         if (!response.ok) throw new Error("Failed to fetch playlists");
         const data = await response.json();
         setPlaylists(data);
@@ -47,19 +71,43 @@ export default function MyPlaylistsScreen({ navigation }) {
     fetchPlaylists();
   }, []);
   const navigateToPlaylists = () => {
-        setActiveTab("myplaylists");
-        navigation.navigate("MyPlaylists");
-    };
+    setActiveTab("myplaylists");
+    navigation.navigate("MyPlaylists");
+  };
 
-    const navigateToSongs = () => {
-        navigation.navigate("Main");
-        setActiveTab("Main");
-    };
+  const navigateToSongs = () => {
+    navigation.navigate("Main");
+    setActiveTab("Main");
+  };
 
-    const navigateToUsers = () => {
-        setActiveTab("users");
-        navigation.navigate("Users");
-    };
+  const navigateToUsers = () => {
+    setActiveTab("users");
+    navigation.navigate("Users");
+  };
+  const deletePlaylist = async (playlistId) => {
+    try {
+      const response = await AuthService.authenticatedFetch(
+        `${API_URL}/playlists/${playlistId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to delete playlist: ${response.status} ${response.statusText}`
+        );
+      }
+
+      await refreshPlaylists();
+
+      Alert.alert("Success", "Playlist deleted successfully");
+      console.log("Playlist deleted successfully");
+    } catch (error) {
+      Alert.alert("Error", error.message);
+      console.error("Error deleting playlist:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -90,15 +138,42 @@ export default function MyPlaylistsScreen({ navigation }) {
           >
             <Text style={styles.uploadButtonText}>Create Playlist</Text>
           </TouchableOpacity>
-        </View>
+        </View>{" "}
         {playlists.length > 0 ? (
           <FlatList
             data={playlists}
             keyExtractor={(item) => item.id.toString()}
+            refreshing={refreshing}
+            onRefresh={refreshPlaylists}
             renderItem={({ item }) => (
               <View style={styles.songItem}>
                 <Text style={styles.songText}>{item.name}</Text>
                 <View style={styles.songActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.deleteButton]}
+                    onPress={() => {
+                      Alert.alert(
+                        "Delete Playlist",
+                        `Are you sure you want to delete "${item.name}"?`,
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Delete",
+                            onPress: () => deletePlaylist(item.id),
+                            style: "destructive",
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Icon
+                      name="trash"
+                      style={[styles.actionIcon, styles.deleteIcon]}
+                    />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
                     onPress={() =>
@@ -122,70 +197,55 @@ export default function MyPlaylistsScreen({ navigation }) {
       </View>
 
       {/* Player Footer */}
-            <View style={styles.playerFooter}>
-              <View style={styles.playerInfo}>
-                <Text style={styles.playerIcon}>♪</Text>
-                <View style={styles.playerText}>
-                  <Text style={styles.songName}>Song name</Text>
-                  <Text style={styles.artistName}>Artist</Text>
-                </View>
-              </View>
-      
-              <View style={styles.playerControls}>
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => console.log("Add to playlist")}
-                >
-                  <Text style={[styles.controlIcon, { color: "#000" }]}>➕</Text>
-                </TouchableOpacity>
-              </View>
-      
-              <View style={styles.playerMainControls}>
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => console.log("Previous")}
-                >
-                  <Text style={styles.controlIcon}>⏪</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.controlButton, styles.playButton]}
-                  onPress={() => console.log("Play/Pause")}
-                >
-                  <Text style={[styles.controlIcon, styles.playIcon]}>▶</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => console.log("Next")}
-                >
-                  <Text style={styles.controlIcon}>⏩</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+      <View style={styles.playerFooter}>
+        <View style={styles.playerInfo}>
+          <Text style={styles.playerIcon}>♪</Text>
+          <View style={styles.playerText}>
+            <Text style={styles.songName}>Song name</Text>
+            <Text style={styles.artistName}>Artist</Text>
+          </View>
+        </View>
 
-            {/* Bottom Navigation */}
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    style={[styles.footerTab, styles.activeTab]}
-                    onPress={navigateToPlaylists}
-                >
-                    <Text style={styles.footerTabText}>Playlists</Text>
-                </TouchableOpacity>
+        <View style={styles.playerMainControls}>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={() => console.log("Previous")}
+          >
+            <Text style={styles.controlIcon}>⏪</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.controlButton, styles.playButton]}
+            onPress={() => console.log("Play/Pause")}
+          >
+            <Text style={[styles.controlIcon, styles.playIcon]}>▶</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={() => console.log("Next")}
+          >
+            <Text style={styles.controlIcon}>⏩</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-                <TouchableOpacity
-                    style={styles.footerTab}
-                    onPress={navigateToSongs}
-                >
-                    <Text style={styles.footerTabText}>Songs</Text>
-                </TouchableOpacity>
+      {/* Bottom Navigation */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.footerTab, styles.activeTab]}
+          onPress={navigateToPlaylists}
+        >
+          <Text style={styles.footerTabText}>Playlists</Text>
+        </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.footerTab}
-                    onPress={navigateToUsers}
-                >
-                    <Text style={styles.footerTabText}>Users</Text>
-                </TouchableOpacity>
-            </View>
-        </SafeAreaView>
+        <TouchableOpacity style={styles.footerTab} onPress={navigateToSongs}>
+          <Text style={styles.footerTabText}>Songs</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.footerTab} onPress={navigateToUsers}>
+          <Text style={styles.footerTabText}>Users</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -204,7 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
-    paddingTop: 40, // Added more space from top
+    paddingTop: 40,
     backgroundColor: "#fff",
     shadowColor: "#000",
     shadowOffset: {
@@ -329,6 +389,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#333",
   },
+  deleteButton: {
+    backgroundColor: "#ffeeee",
+  },
+  deleteIcon: {
+    color: "#d9534f",
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -413,24 +479,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   footer: {
-        flexDirection: "row",
-        backgroundColor: "#333",
-    },
-    footerTab: {
-        flex: 1,
-        paddingVertical: 15,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    footerTabText: {
-        color: "#fff",
-        fontWeight: "500",
-    },
-    activeTab: {
-        backgroundColor: "#00FFFF",
-    },
-    activeTabText: {
-        color: "#000",
-        fontWeight: "bold",
-    },
+    flexDirection: "row",
+    backgroundColor: "#333",
+  },
+  footerTab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerTabText: {
+    color: "#fff",
+    fontWeight: "500",
+  },
+  activeTab: {
+    backgroundColor: "#00FFFF",
+  },
+  activeTabText: {
+    color: "#000",
+    fontWeight: "bold",
+  },
 });

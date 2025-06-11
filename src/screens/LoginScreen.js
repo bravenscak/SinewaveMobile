@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,19 +10,19 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
-} from 'react-native';
-import AuthService from '../services/AuthService';
+} from "react-native";
+import AuthService from "../services/AuthService";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -33,10 +33,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
       if (result.success) {
         onLoginSuccess(result.user);
       } else {
-        Alert.alert('Login Failed', result.error || 'Invalid credentials');
+        Alert.alert("Login Failed", result.error || "Invalid credentials");
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Network error. Please check your connection.');
+      Alert.alert(
+        "Error",
+        error.message || "Network error. Please check your connection."
+      );
     } finally {
       setLoading(false);
     }
@@ -48,13 +51,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.content}>
           <Text style={styles.title}>SINEWAVE</Text>
-          
+
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Username</Text>
@@ -116,27 +119,27 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   keyboardView: {
     flex: 1,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   title: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 40,
   },
   formContainer: {
     width: width * 0.85,
     maxWidth: 400,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
     borderRadius: 8,
     padding: 30,
     elevation: 3,
@@ -149,26 +152,26 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 4,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     minHeight: 44,
   },
   button: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     borderRadius: 4,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 10,
     minHeight: 50,
   },
@@ -176,24 +179,24 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   linkButton: {
     marginTop: 20,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    alignItems: "center",
     minHeight: 44,
   },
   linkText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

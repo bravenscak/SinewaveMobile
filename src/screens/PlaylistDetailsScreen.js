@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,8 +6,8 @@ import {
   SafeAreaView,
   FlatList,
   TouchableOpacity,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import AuthService from "../services/AuthService";
 
 const API_URL = "http://192.168.1.77:8080/api";
 
@@ -19,24 +19,43 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSong, setCurrentSong] = useState(null);
+  const [activeTab, setActiveTab] = useState("myplaylists");
 
+  const navigateToPlaylists = () => {
+    setActiveTab("myplaylists");
+    navigation.navigate("MyPlaylists");
+  };
+
+  const navigateToSongs = () => {
+    setActiveTab("songs");
+    navigation.navigate("Main");
+  };
+
+  const navigateToUsers = () => {
+    setActiveTab("users");
+    navigation.navigate("Users");
+  };
   useEffect(() => {
     const fetchPlaylistDetails = async () => {
       try {
-        const response = await fetch(`${API_URL}/playlists/${playlistId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${await AsyncStorage.getItem('token')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch playlist details');
-        const data = await response.json();
-        setPlaylist(data);
-        setSongs(data.songs || []);
+        const playlistResponse = await AuthService.authenticatedFetch(
+          `${API_URL}/playlists/${playlistId}`
+        );
+        if (!playlistResponse.ok)
+          throw new Error("Failed to fetch playlist details");
+        const playlistData = await playlistResponse.json();
+        setPlaylist(playlistData);
+
+        const songsResponse = await AuthService.authenticatedFetch(
+          `${API_URL}/playlists/${playlistId}/songs`
+        );
+        if (!songsResponse.ok)
+          throw new Error("Failed to fetch playlist songs");
+        const songsData = await songsResponse.json();
+        setSongs(songsData || []);
       } catch (error) {
         console.error(error);
-        setError('Failed to load playlist');
+        setError("Failed to load playlist");
       } finally {
         setLoading(false);
       }
@@ -60,17 +79,22 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
       </View>
     );
   }
-
   const handlePlaySong = (song) => {
-    setCurrentSong(song);
-    setIsPlaying(true);
-    // TODO playback logic here
+    if (currentSong && currentSong.id === song.id) {
+      setIsPlaying(!isPlaying);
+    } else {
+      setCurrentSong(song);
+      setIsPlaying(true);
+    }
+    // TODO: Implement actual audio playback logic here
+    console.log(`${isPlaying ? "Pausing" : "Playing"} song:`, song.name);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.playlistTitle}>{playlist?.name}</Text>
+        <Text style={styles.songCount}>{songs.length} songs</Text>
       </View>
 
       <FlatList
@@ -79,15 +103,22 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
         renderItem={({ item }) => (
           <View style={styles.songItem}>
             <View style={styles.songInfo}>
-              <Text style={styles.songName}>{item.name}</Text>
-              <Text style={styles.artistName}>{item.artist}</Text>
+              <Text style={styles.songName}>{item.title}</Text>
+              <Text style={styles.artistName}>
+                {item.artist || "Unknown Artist"}
+              </Text>
             </View>
             <TouchableOpacity
-              style={[styles.playButton, currentSong?.id === item.id && isPlaying && styles.playingButton]}
+              style={[
+                styles.playButton,
+                currentSong?.id === item.id &&
+                  isPlaying &&
+                  styles.playingButton,
+              ]}
               onPress={() => handlePlaySong(item)}
             >
               <Text style={styles.playButtonText}>
-                {currentSong?.id === item.id && isPlaying ? '▶️' : '▶'}
+                {currentSong?.id === item.id && isPlaying ? "▶️" : "▶"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -100,6 +131,73 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
         }
       />
 
+      <View style={styles.content}>
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <Text>Loading songs...</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={songs}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <View style={styles.songItem}>
+                      <View style={styles.songInfo}>
+                        <Text style={styles.songTitle}>{item.title}</Text>
+                        <Text style={styles.artistName}>{item.artistName}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.playSongButton}
+                        onPress={() => {
+                          // Add play functionality here
+                        }}
+                      >
+                        <Text style={styles.playSongButtonText}>▶</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  contentContainerStyle={styles.songsList}
+                  ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                      <Text>No songs available</Text>
+                    </View>
+                  }
+                />
+              )}
+            </View>
+
+      {/* Player Footer */}
+            <View style={styles.playerFooter}>
+              <View style={styles.playerInfo}>
+                <Text style={styles.playerIcon}>♪</Text>
+                <View style={styles.playerText}>
+                  <Text style={styles.songName}>Song name</Text>
+                  <Text style={styles.artistName}>Artist</Text>
+                </View>
+              </View>
+      
+              <View style={styles.playerMainControls}>
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={() => console.log("Previous")}
+                >
+                  <Text style={styles.controlIcon}>⏪</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.controlButton, styles.playButton]}
+                  onPress={() => console.log("Play/Pause")}
+                >
+                  <Text style={[styles.controlIcon, styles.playIcon]}>▶</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={() => console.log("Next")}
+                >
+                  <Text style={styles.controlIcon}>⏩</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
       {/* Bottom Navigation */}
       <View style={styles.footer}>
         <TouchableOpacity
@@ -109,13 +207,8 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
           <Text style={styles.footerTabText}>Playlists</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.footerTab}
-          onPress={navigateToSongs}
-        >
-          <Text style={[styles.footerTabText, styles.activeTabText]}>
-            Songs
-          </Text>
+        <TouchableOpacity style={styles.footerTab} onPress={navigateToSongs}>
+          <Text style={styles.footerTabText}>Songs</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.footerTab} onPress={navigateToUsers}>
@@ -129,57 +222,80 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   playlistTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
+  },
+  songCount: {
+    fontSize: 16,
+    color: "#666",
+  },
+  songsList: {
+    padding: 16,
   },
   songItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   songInfo: {
     flex: 1,
   },
+  songTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
   songName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   artistName: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   playButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#00FFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#00FFFF",
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 10,
   },
   playingButton: {
-    backgroundColor: '#00E0E0',
+    backgroundColor: "#00E0E0",
   },
   playButtonText: {
     fontSize: 18,
@@ -188,13 +304,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     paddingTop: 40,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: "#fff",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -204,8 +320,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   avatarContainer: {
@@ -215,39 +331,39 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
   },
   userInfo: {
     flex: 1,
   },
   username: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 5,
   },
   editButton: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   editButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   logoutButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: "#dc3545",
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
   },
   logoutButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   songsSection: {
     flex: 1,
@@ -255,56 +371,56 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   songsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   uploadButton: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
   },
   uploadButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   songsList: {
     flex: 1,
   },
   songItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#C0C0C0',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#C0C0C0",
     padding: 15,
     marginVertical: 2,
     borderRadius: 5,
   },
   songText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     flex: 1,
   },
   songActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 15,
   },
   actionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -315,74 +431,74 @@ const styles = StyleSheet.create({
   },
   actionIcon: {
     fontSize: 20,
-    color: '#333',
+    color: "#333",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   playerFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#00FFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00FFFF",
     paddingHorizontal: 15,
     paddingVertical: 12,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   playerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   playerIcon: {
     fontSize: 24,
     marginRight: 10,
-    color: '#000',
+    color: "#000",
   },
   playerText: {
     flex: 1,
   },
   songName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: "bold",
+    color: "#000",
   },
   artistName: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   playerControls: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   playerMainControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
   },
   controlButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   playButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 25,
     width: 50,
     height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -393,11 +509,32 @@ const styles = StyleSheet.create({
   },
   controlIcon: {
     fontSize: 18,
-    color: '#000',
-    fontWeight: 'bold',
+    color: "#000",
+    fontWeight: "bold",
   },
   playIcon: {
-    color: '#000',
+    color: "#000",
     fontSize: 20,
+  },
+  footer: {
+    flexDirection: "row",
+    backgroundColor: "#333",
+  },
+  footerTab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerTabText: {
+    color: "#fff",
+    fontWeight: "500",
+  },
+  activeTab: {
+    backgroundColor: "#00FFFF",
+  },
+  activeTabText: {
+    color: "#000",
+    fontWeight: "bold",
   },
 });
