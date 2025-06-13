@@ -113,7 +113,7 @@ export default function UserProfileScreen({ route, navigation }) {
     console.log("Add to playlist:", songId);
     // TODO: Implement add to playlist functionality
   };
-  
+
   const playSong = (song) => {
     console.log("Playing song:", song);
     // TODO: Implement song playback
@@ -122,13 +122,12 @@ export default function UserProfileScreen({ route, navigation }) {
 
   const navigateToSongs = () => {
     navigation.navigate("Main");
-  };  const renderSongItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.songItem}
-      onPress={() => playSong(item)}
-    >
+  };
+  const renderSongItem = ({ item }) => (
+    <TouchableOpacity style={styles.songItem} onPress={() => playSong(item)}>
       <Text style={styles.songText}>
-        {item.title} {item.artist ? `- ${item.artist}` : ''} {item.genre ? `(${item.genre})` : ''}
+        {item.title} {item.artist ? `- ${item.artist}` : ""}{" "}
+        {item.genre ? `(${item.genre})` : ""}
       </Text>
       <View style={styles.songActions}>
         <TouchableOpacity
@@ -189,7 +188,8 @@ export default function UserProfileScreen({ route, navigation }) {
 
       {/* User's Songs Section */}
       <View style={styles.songsSection}>
-        <Text style={styles.sectionTitle}>Users songs</Text>        <FlatList
+        <Text style={styles.sectionTitle}>Users songs</Text>
+        <FlatList
           data={userSongs}
           renderItem={renderSongItem}
           keyExtractor={(item) => item.id.toString()}
@@ -197,7 +197,9 @@ export default function UserProfileScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No songs uploaded by this user</Text>
+              <Text style={styles.emptyText}>
+                No songs uploaded by this user
+              </Text>
             </View>
           }
           refreshing={loading}
