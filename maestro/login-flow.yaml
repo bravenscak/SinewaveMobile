@@ -6,7 +6,7 @@ appId: host.exp.sinewavemobile
 - inputText: "testU"
 
 - tapOn: "password"
-- inputText: "12345678"
+- inputText: "123456789"
 
 - tapOn: "Login"
-- assertVisible: "Loading songs..."
+- assertVisible: "SineWave"

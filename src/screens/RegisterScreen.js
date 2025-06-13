@@ -150,16 +150,19 @@ export default function RegisterScreen({
           </View>
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Register</Text>
-            )}
-          </TouchableOpacity>
+                        style={[styles.button, loading && styles.buttonDisabled]}
+                        onPress={handleRegister}
+                        disabled={loading}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.buttonContent}>
+                          {loading ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                          ) : (
+                            <Text style={styles.buttonText}>Register</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.linkButton}

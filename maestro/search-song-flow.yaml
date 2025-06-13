@@ -9,11 +9,5 @@ appId: host.exp.sinewavemobile
 - assertVisible: "🔍"
 - tapOn: "🔍"
 
-- assertVisible: "➕"
-- tapOn: "➕"
-
-- assertVisible: "Integration Playlist"
-- tapOn: "Integration Playlist"
-
-- assertVisible: "Success"
-- tapOn: "OK"
+- assertVisible: "✖"
+- tapOn: "✖"

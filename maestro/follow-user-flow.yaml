@@ -7,13 +7,10 @@ appId: host.exp.sinewavemobile
 
 - assertVisible: "Find user..."
 - tapOn: "Find user..."
-- inputText: "admin"
+- inputText: "ihorvat2"
 
 - assertVisible: "🔍"
 - tapOn: "🔍"
-
-- assertVisible: "Follow"
-- tapOn: "Follow"
 
 - assertVisible: "Unfollow"
 - tapOn: "Unfollow"

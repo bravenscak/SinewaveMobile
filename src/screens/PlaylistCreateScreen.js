@@ -19,6 +19,10 @@ export default function PlaylistCreateScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("myplaylists");
   const [user, setUser] = useState(null);
+  const [playlistData, setPlaylistData] = useState({
+    name: '',
+    isPublic: false
+  });
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -44,7 +48,7 @@ export default function PlaylistCreateScreen({ navigation }) {
     setError(null);
 
     try {
-      const checkResponse = await AuthService.authenticatedFetch(`${API_URL}/playlists`);
+      const checkResponse = await AuthService.authenticatedFetch(`${API_URL}/playlists/user`);
       
       if (!checkResponse.ok) {
         throw new Error("Failed to check existing playlists");
@@ -61,12 +65,17 @@ export default function PlaylistCreateScreen({ navigation }) {
         return;
       }
       
+      playlistData.name = name;
+      playlistData.isPublic = false;
+
       const response = await AuthService.authenticatedFetch(`${API_URL}/playlists`, {
         method: "POST",
-        body: JSON.stringify(name),
+        body: JSON.stringify(playlistData),
       });
 
       if (!response.ok) {
+        console.error(playlistData);
+        console.error("Failed to create playlist:", response);
         throw new Error("Failed to create playlist");
       }
 

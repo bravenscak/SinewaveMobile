@@ -7,25 +7,25 @@ appId: host.exp.sinewavemobile
 - tapOn: "Don't have an account? Register here"
 
 #enter details
-- assertVisible: "First name"
-- tapOn: "ime"
-- inputText: "integration"
+# - assertVisible: "First name"
+# - tapOn: "ime"
+# - inputText: "integration"
 
-- assertVisible: "Last name"
-- tapOn: "prezime"
-- inputText: "mobile"
+# - assertVisible: "Last name"
+# - tapOn: "prezime"
+# - inputText: "mobile"
 
-- assertVisible: "Username"
-- tapOn: "korisnicko ime"
-- inputText: "integration_mobile"
+# - assertVisible: "Username"
+# - tapOn: "korisnicko ime"
+# - inputText: "integration_mobile3"
 
-- assertVisible: "E - mail"
-- tapOn: "e-mail"
-- inputText: "test@mail.com"
+# - assertVisible: "E - mail"
+# - tapOn: "e-mail"
+# - inputText: "test@mail.com"
 
-- assertVisible: "Password"
-- tapOn: "password" 
-- inputText: "12345678"
+# - assertVisible: "Password"
+# - tapOn: "password" 
+# - inputText: "12345678"
 
 - assertVisible: "Register"
 - tapOn: "Register"

@@ -8,7 +8,7 @@ appId: host.exp.sinewavemobile
 - assertVisible: "Create playlist"
 - tapOn: "Create playlist"
 
-- assertVisible: "Playlist name"
+- assertVisible: "Playlist name..."
 - tapOn: "Playlist name..."
 
 - inputText: "Integration Playlist"
