@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Audio } from "expo-av";
+import * as FileSystem from 'expo-file-system'; // Added import
 import AuthService from "../services/AuthService";
 import {
   View,
@@ -32,8 +33,8 @@ export default function MainScreen({ onLogout, navigation }) {
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  // Initialize audio session
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -53,7 +54,6 @@ export default function MainScreen({ onLogout, navigation }) {
     fetchSongs();
     fetchUserData();
 
-    // Cleanup audio resources when component unmounts
     const setupAudio = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -117,7 +117,7 @@ export default function MainScreen({ onLogout, navigation }) {
 
   const handleSearch = () => {
     if (searchValue.trim() === "") {
-      setSongs([]); // Clear songs if search is empty
+      setSongs([]);
       return;
     }
     setLoading(true);
@@ -129,7 +129,7 @@ export default function MainScreen({ onLogout, navigation }) {
   };
   const handleClearSearch = () => {
     setSearchValue("");
-    fetchSongs(); // Reset to original song list
+    fetchSongs();
   };
 
   const navigateToPlaylists = () => {
@@ -158,42 +158,79 @@ export default function MainScreen({ onLogout, navigation }) {
     }
   }; 
   
-  // Function to load and play a song
-  const playSong = async (song) => {
-    try {
-      // Stop current song if one is playing
-      if (sound) {
+  const playSong = async (songToPlay) => {
+    if (isDownloading) {
+      console.log("Another download is already in progress.");
+      return;
+    }
+
+    if (sound) {
+      console.log("Stopping and unloading previous sound.");
+      try {
+        await sound.stopAsync();
         await sound.unloadAsync();
+      } catch (e) {
+        console.error("Error stopping/unloading previous sound:", e);
       }
+      setSound(null); 
+    }
 
-      // Mark song as playing
-      await AuthService.authenticatedFetch(`${API_URL}/songs/${song.id}/play`, {
-        method: "POST",
-      });
+    console.log("Attempting to download and play song:", songToPlay.title);
+    setCurrentSong(songToPlay);
+    setIsDownloading(true);
+    setIsPlaying(false); 
 
-      // Update UI before starting to stream
-      setCurrentSong(song);
-      setIsPlaying(true);
+    const localFileUri = `${FileSystem.cacheDirectory}song_${songToPlay.id}.mp3`;
+    const remoteUrl = `${API_URL}/api/songs/stream/${songToPlay.id}`;
 
-      // Create and configure the sound object
-      console.log(`Streaming from ${API_URL}/songs/stream/${song.id}`);
+    try {
+      const token = await AuthService.getAccessToken(); 
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-      // Load and play the audio
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: `${API_URL}/songs/stream/${song.id}` },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
+      console.log(`Downloading from: ${remoteUrl} to ${localFileUri}`);
+      const downloadResult = await FileSystem.downloadAsync(
+        remoteUrl,
+        localFileUri,
+        { headers }
       );
 
+      if (downloadResult.status !== 200) {
+        throw new Error(`Failed to download song. Server responded with status: ${downloadResult.status}`);
+      }
+      console.log("Song downloaded successfully:", downloadResult.uri);
+      setIsDownloading(false);
+
+      try {
+        await AuthService.authenticatedFetch(`${API_URL}/api/songs/stream/${songToPlay.id}`, {
+          method: "POST",
+        });
+        console.log("Successfully marked song as playing on backend (tracking).");
+      } catch (playTrackError) {
+        console.warn("Could not mark song as playing on backend (tracking):", playTrackError);
+      }
+
+      console.log("Creating sound object from local URI:", downloadResult.uri);
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: downloadResult.uri },
+        {
+          shouldPlay: true,
+          staysActiveInBackground: true,
+        },
+        onPlaybackStatusUpdate
+      );
       setSound(newSound);
+      setIsPlaying(true);
+
     } catch (error) {
-      console.error("Error playing song:", error);
-      Alert.alert("Error", "Failed to play the song");
+      console.error("Error in playSong (downloading or playing local file):", error);
+      Alert.alert("Playback Error", error.message || "Failed to download or play the song.");
+      setIsDownloading(false);
       setIsPlaying(false);
+      setCurrentSong(null);
+      setSound(null);
     }
   };
 
-  // Monitor playback status
   const onPlaybackStatusUpdate = (status) => {
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
@@ -201,19 +238,16 @@ export default function MainScreen({ onLogout, navigation }) {
       setDuration(status.durationMillis);
       setSliderValue(status.positionMillis / status.durationMillis);
 
-      // Handle when audio finishes playing
       if (status.didJustFinish) {
         setIsPlaying(false);
       }
     }
   };
 
-  // Handle play button click
   const handlePlaySong = (song) => {
     playSong(song);
   };
 
-  // Toggle between play and pause
   const togglePlayPause = async () => {
     if (sound) {
       if (isPlaying) {
@@ -332,25 +366,34 @@ export default function MainScreen({ onLogout, navigation }) {
                   <Text style={styles.artistName}>{item.artistName}</Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.playSongButton}
+                  style={styles.playSongButton} 
                   onPress={() => openPlaylistModal(item)}
+                  disabled={isDownloading && currentSong?.id === item.id} 
                 >
                   <Text style={styles.playSongButtonText}>➕</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.playSongButton}
+                  style={styles.playSongButton} 
                   onPress={() =>
                     currentSong?.id === item.id && isPlaying
-                      ? togglePlayPause()
-                      : handlePlaySong(item)
+                      ? togglePlayPause() 
+                      : handlePlaySong(item) 
                   }
+                  disabled={isDownloading && currentSong?.id === item.id}
                 >
-                  <Text style={styles.playSongButtonText}>
-                    {currentSong?.id === item.id && isPlaying ? "⏸" : "▶"}
-                  </Text>
+                  {(isDownloading && currentSong?.id === item.id) ? (
+                    <ActivityIndicator size="small" color="#000" />
+                  ) : (
+                    <Text style={styles.playSongButtonText}>
+                      {currentSong?.id === item.id && isPlaying ? "⏸" : "▶"}
+                    </Text>
+                  )}
                 </TouchableOpacity>
-                {currentSong?.id === item.id && (
-                  <Text style={styles.nowPlayingIndicator}>Now Playing</Text>
+                {currentSong?.id === item.id && !isDownloading && (
+                  <Text style={styles.nowPlayingIndicator}>{isPlaying ? "Now Playing" : "Paused"}</Text>
+                )}
+                 {currentSong?.id === item.id && isDownloading && (
+                  <Text style={styles.nowPlayingIndicator}>Downloading...</Text>
                 )}
               </View>
             )}
