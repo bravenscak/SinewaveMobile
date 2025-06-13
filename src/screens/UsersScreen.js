@@ -272,7 +272,7 @@ export default function UsersScreen({ navigation }) {
       )}
 
       {/* Player Footer*/}
-      <View style={styles.playerFooter}>
+      {/* <View style={styles.playerFooter}>
         <View style={styles.playerInfo}>
           <Text style={styles.playerIcon}>♪</Text>
           <View style={styles.playerText}>
@@ -301,7 +301,7 @@ export default function UsersScreen({ navigation }) {
             <Text style={styles.controlIcon}>⏩</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </View> */}
 
       <View style={styles.footer}>
         <TouchableOpacity

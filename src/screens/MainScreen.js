@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Audio } from 'expo-av';
+import { Audio } from "expo-av";
+import * as FileSystem from 'expo-file-system'; // Added import
 import AuthService from "../services/AuthService";
 import {
   View,
@@ -28,34 +29,11 @@ export default function MainScreen({ onLogout, navigation }) {
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [selectedSong, setSelectedSong] = useState(null);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
-  
-  // New state for audio playback
+
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState(null);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [sliderValue, setSliderValue] = useState(0);
-
-  // Initialize audio session
-  useEffect(() => {
-    const setupAudio = async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
-        console.log("Audio mode configured");
-      } catch (error) {
-        console.error("Failed to configure audio mode:", error);
-      }
-    };
-    
-    setupAudio();
-  }, []);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -72,26 +50,27 @@ export default function MainScreen({ onLogout, navigation }) {
         setLoading(false);
       }
     };
-    
-    const fetchSongs = async () => {
-      try {
-        const response = await AuthService.authenticatedFetch(
-          `${API_URL}/songs`
-        );
-        if (!response.ok) throw new Error("Failed to fetch songs");
-        const data = await response.json();
-        setSongs(data);
-      } catch (error) {
-        console.error("Error fetching songs:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
+
     fetchSongs();
     fetchUserData();
-    
-    // Cleanup audio resources when component unmounts
+
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+        console.log("Audio mode configured");
+      } catch (error) {
+        console.error("Failed to configure audio mode:", error);
+      }
+    };
+
+    setupAudio();
+
     return () => {
       if (sound) {
         console.log("Unloading Sound");
@@ -99,7 +78,26 @@ export default function MainScreen({ onLogout, navigation }) {
       }
     };
   }, []);
-  
+
+  const fetchSongs = async () => {
+      try {
+        const response = await AuthService.authenticatedFetch(
+          `${API_URL}/songs`
+        );
+        if (!response.ok) throw new Error("Failed to fetch songs");
+        const data = await response.json();
+
+        const sortedSongs = data.sort((a, b) =>
+          a.title.localeCompare(b.title)
+        );
+        setSongs(sortedSongs);
+      } catch (error) {
+        console.error("Error fetching songs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
   const fetchPlaylists = async () => {
     setLoadingPlaylists(true);
     try {
@@ -116,6 +114,24 @@ export default function MainScreen({ onLogout, navigation }) {
       setLoadingPlaylists(false);
     }
   };
+
+  const handleSearch = () => {
+    if (searchValue.trim() === "") {
+      setSongs([]);
+      return;
+    }
+    setLoading(true);
+    const filteredSongs = songs.filter((song) =>
+      song.title.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    setSongs(filteredSongs);
+    setLoading(false);
+  };
+  const handleClearSearch = () => {
+    setSearchValue("");
+    fetchSongs();
+  };
+
   const navigateToPlaylists = () => {
     setActiveTab("myplaylists");
     navigation.navigate("MyPlaylists");
@@ -130,13 +146,7 @@ export default function MainScreen({ onLogout, navigation }) {
     setActiveTab("users");
     navigation.navigate("Users");
   };
-  const handleSearch = () => {
-    if (!searchValue.trim()) fetchSongs();
-    return;
-  };
-  const handleClearSearch = () => {
-    setSearchValue("");
-  };
+
   const navigateToProfile = async () => {
     try {
       const userString = await AsyncStorage.getItem("user");
@@ -146,45 +156,81 @@ export default function MainScreen({ onLogout, navigation }) {
     } catch (error) {
       console.error("Error getting user data:", error);
     }
-  };  // Function to load and play a song
-  const playSong = async (song) => {
-    try {
-      // Stop current song if one is playing
-      if (sound) {
+  }; 
+  
+  const playSong = async (songToPlay) => {
+    if (isDownloading) {
+      console.log("Another download is already in progress.");
+      return;
+    }
+
+    if (sound) {
+      console.log("Stopping and unloading previous sound.");
+      try {
+        await sound.stopAsync();
         await sound.unloadAsync();
+      } catch (e) {
+        console.error("Error stopping/unloading previous sound:", e);
       }
-      
-      // Mark song as playing
-      await AuthService.authenticatedFetch(
-        `${API_URL}/songs/${song.id}/play`,
-        {
-          method: "POST",
-        }
+      setSound(null); 
+    }
+
+    console.log("Attempting to download and play song:", songToPlay.title);
+    setCurrentSong(songToPlay);
+    setIsDownloading(true);
+    setIsPlaying(false); 
+
+    const localFileUri = `${FileSystem.cacheDirectory}song_${songToPlay.id}.mp3`;
+    const remoteUrl = `${API_URL}/api/songs/stream/${songToPlay.id}`;
+
+    try {
+      const token = await AuthService.getAccessToken(); 
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      console.log(`Downloading from: ${remoteUrl} to ${localFileUri}`);
+      const downloadResult = await FileSystem.downloadAsync(
+        remoteUrl,
+        localFileUri,
+        { headers }
       );
-      
-      // Update UI before starting to stream
-      setCurrentSong(song);
-      setIsPlaying(true);
-      
-      // Create and configure the sound object
-      console.log(`Streaming from ${API_URL}/songs/stream/${song.id}`);
-      
-      // Load and play the audio
+
+      if (downloadResult.status !== 200) {
+        throw new Error(`Failed to download song. Server responded with status: ${downloadResult.status}`);
+      }
+      console.log("Song downloaded successfully:", downloadResult.uri);
+      setIsDownloading(false);
+
+      try {
+        await AuthService.authenticatedFetch(`${API_URL}/api/songs/stream/${songToPlay.id}`, {
+          method: "POST",
+        });
+        console.log("Successfully marked song as playing on backend (tracking).");
+      } catch (playTrackError) {
+        console.warn("Could not mark song as playing on backend (tracking):", playTrackError);
+      }
+
+      console.log("Creating sound object from local URI:", downloadResult.uri);
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: `${API_URL}/songs/stream/${song.id}` },
-        { shouldPlay: true },
+        { uri: downloadResult.uri },
+        {
+          shouldPlay: true,
+          staysActiveInBackground: true,
+        },
         onPlaybackStatusUpdate
       );
-      
       setSound(newSound);
+      setIsPlaying(true);
+
     } catch (error) {
-      console.error("Error playing song:", error);
-      Alert.alert("Error", "Failed to play the song");
+      console.error("Error in playSong (downloading or playing local file):", error);
+      Alert.alert("Playback Error", error.message || "Failed to download or play the song.");
+      setIsDownloading(false);
       setIsPlaying(false);
+      setCurrentSong(null);
+      setSound(null);
     }
   };
-  
-  // Monitor playback status
+
   const onPlaybackStatusUpdate = (status) => {
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
@@ -192,19 +238,16 @@ export default function MainScreen({ onLogout, navigation }) {
       setDuration(status.durationMillis);
       setSliderValue(status.positionMillis / status.durationMillis);
 
-      // Handle when audio finishes playing
       if (status.didJustFinish) {
         setIsPlaying(false);
       }
     }
   };
 
-  // Handle play button click
   const handlePlaySong = (song) => {
     playSong(song);
   };
-  
-  // Toggle between play and pause
+
   const togglePlayPause = async () => {
     if (sound) {
       if (isPlaying) {
@@ -214,34 +257,27 @@ export default function MainScreen({ onLogout, navigation }) {
       }
     }
   };
-  
-  // Seek to position
-  const seekToPosition = async (value) => {
-    if (sound && duration) {
-      const newPosition = value * duration;
-      await sound.setPositionAsync(newPosition);
-    }
-  };
-  
+
   const addSongToPlaylist = async (playlistId, songId) => {
     try {
       const playlistSongDto = {
         playlistId: playlistId,
-        songId: songId
+        songId: songId,
       };
-      
+
       const response = await AuthService.authenticatedFetch(
         `${API_URL}/playlists/songs`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify(playlistSongDto)
+          body: JSON.stringify(playlistSongDto),
         }
       );
-      
-      if (!response.ok) throw new Error("Failed to add song to playlist" + response.status);
+
+      if (!response.ok)
+        throw new Error("Failed to add song to playlist" + response.status);
       Alert.alert("Success", "Song successfully added to playlist");
       setPlaylistModalVisible(false);
     } catch (error) {
@@ -249,13 +285,13 @@ export default function MainScreen({ onLogout, navigation }) {
       Alert.alert("Error", "Failed to add song to playlist");
     }
   };
-  
+
   const openPlaylistModal = (song) => {
     setSelectedSong(song);
     fetchPlaylists();
     setPlaylistModalVisible(true);
   };
-  
+
   const handleAddSongToPlaylist = (playlistId) => {
     if (selectedSong) {
       addSongToPlaylist(playlistId, selectedSong.id);
@@ -264,9 +300,7 @@ export default function MainScreen({ onLogout, navigation }) {
     }
   };
 
-
   useEffect(() => {
-    // Cleanup function to stop and unload the sound when the component unmounts or when the song changes
     return () => {
       if (sound) {
         sound.unloadAsync();
@@ -278,19 +312,18 @@ export default function MainScreen({ onLogout, navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.profileSection}>
-                  <View style={styles.avatarContainer}>
-                    <View style={styles.avatar} />
-                  </View>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.username}>{user?.username}</Text>
-                  </View>
-                </View>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar} />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{user?.username}</Text>
+          </View>
+        </View>
         <Text style={styles.headerTitle}>SineWave</Text>
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
-
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -305,14 +338,13 @@ export default function MainScreen({ onLogout, navigation }) {
             style={styles.clearButton}
             onPress={handleClearSearch}
           >
-            <Text style={styles.clearButtonText}>×</Text>
+            <Text style={styles.clearButtonText}>✖</Text>
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
           <Text style={styles.searchIcon}>🔍</Text>
         </TouchableOpacity>
       </View>
-
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -323,27 +355,45 @@ export default function MainScreen({ onLogout, navigation }) {
             data={songs}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <View style={[styles.songItem, currentSong?.id === item.id && styles.currentlyPlayingSong]}>
+              <View
+                style={[
+                  styles.songItem,
+                  currentSong?.id === item.id && styles.currentlyPlayingSong,
+                ]}
+              >
                 <View style={styles.songInfo}>
                   <Text style={styles.songTitle}>{item.title}</Text>
                   <Text style={styles.artistName}>{item.artistName}</Text>
-                </View>                <TouchableOpacity
-                  style={styles.playSongButton}
+                </View>
+                <TouchableOpacity
+                  style={styles.playSongButton} 
                   onPress={() => openPlaylistModal(item)}
+                  disabled={isDownloading && currentSong?.id === item.id} 
                 >
                   <Text style={styles.playSongButtonText}>➕</Text>
-                </TouchableOpacity>                <TouchableOpacity
-                  style={styles.playSongButton}
-                  onPress={() => currentSong?.id === item.id && isPlaying 
-                    ? togglePlayPause() 
-                    : handlePlaySong(item)}
-                >
-                  <Text style={styles.playSongButtonText}>
-                    {currentSong?.id === item.id && isPlaying ? "⏸" : "▶"}
-                  </Text>
                 </TouchableOpacity>
-                {currentSong?.id === item.id && (
-                  <Text style={styles.nowPlayingIndicator}>Now Playing</Text>
+                <TouchableOpacity
+                  style={styles.playSongButton} 
+                  onPress={() =>
+                    currentSong?.id === item.id && isPlaying
+                      ? togglePlayPause() 
+                      : handlePlaySong(item) 
+                  }
+                  disabled={isDownloading && currentSong?.id === item.id}
+                >
+                  {(isDownloading && currentSong?.id === item.id) ? (
+                    <ActivityIndicator size="small" color="#000" />
+                  ) : (
+                    <Text style={styles.playSongButtonText}>
+                      {currentSong?.id === item.id && isPlaying ? "⏸" : "▶"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {currentSong?.id === item.id && !isDownloading && (
+                  <Text style={styles.nowPlayingIndicator}>{isPlaying ? "Now Playing" : "Paused"}</Text>
+                )}
+                 {currentSong?.id === item.id && isDownloading && (
+                  <Text style={styles.nowPlayingIndicator}>Downloading...</Text>
                 )}
               </View>
             )}
@@ -354,8 +404,8 @@ export default function MainScreen({ onLogout, navigation }) {
               </View>
             }
           />
-        )}      </View>
-
+        )}
+      </View>
       {/* Playlist Selection Modal */}
       <Modal
         visible={playlistModalVisible}
@@ -413,7 +463,9 @@ export default function MainScreen({ onLogout, navigation }) {
             )}
           </View>
         </View>
-      </Modal>      {/* Player Footer - Only show if a song has been selected */}
+      </Modal>
+
+      {/* Player Footer*/}
       {currentSong && (
         <View style={styles.playerFooter}>
           <View style={styles.playerInfo}>
@@ -448,7 +500,6 @@ export default function MainScreen({ onLogout, navigation }) {
           </View>
         </View>
       )}
-
       {/* Bottom Navigation */}
       <View style={styles.footer}>
         <TouchableOpacity
@@ -495,9 +546,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
-  avatarButton: {
-    padding: 5,
-  },
   avatar: {
     width: 40,
     height: 40,
@@ -509,17 +557,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 10,
     borderRadius: 4,
-    marginTop: 5,
-  },
-  profileDetailsButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#007bff",
-    paddingHorizontal: 5,
-    paddingVertical: 10,
-    borderRadius: 4,
-    marginTop: 5,
   },
   logoutButtonText: {
     color: "#fff",
@@ -637,7 +674,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-  },  playButton: {
+  },
+  playButton: {
     backgroundColor: "#fff",
     borderRadius: 25,
     width: 50,
@@ -652,9 +690,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
-  },
-  pauseButton: {
-    backgroundColor: "#f1f1f1",
   },
   controlIcon: {
     fontSize: 18,
@@ -731,7 +766,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
-  },  searchIcon: {
+  },
+  searchIcon: {
     fontSize: 20,
     color: "#333",
   },
