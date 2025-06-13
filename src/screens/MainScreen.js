@@ -36,6 +36,16 @@ export default function MainScreen({ onLogout, navigation }) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const authenticated = await AuthService.isAuthenticated();
+      if (!authenticated) {
+        onLogout(); 
+        return; 
+      }
+    };
+
+    checkAuth();
+    
     const fetchUserData = async () => {
       try {
         const response = await AuthService.authenticatedFetch(

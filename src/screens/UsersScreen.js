@@ -235,7 +235,7 @@ export default function UsersScreen({ navigation }) {
           style={styles.searchInput}
           value={searchValue}
           onChangeText={setSearchValue}
-          placeholder="Value"
+          placeholder="Find user..."
           returnKeyType="search"
           onSubmitEditing={handleSearch}
         />

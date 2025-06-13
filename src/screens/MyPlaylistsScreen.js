@@ -57,7 +57,7 @@ export default function MyPlaylistsScreen({ navigation }) {
     const fetchPlaylists = async () => {
       try {
         const response = await AuthService.authenticatedFetch(
-          `${API_URL}/playlists`
+          `${API_URL}/user/userplaylists`
         );
         if (!response.ok) throw new Error("Failed to fetch playlists");
         const data = await response.json();

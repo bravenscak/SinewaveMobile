@@ -65,7 +65,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="Value"
+                placeholder="username"
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!loading}
@@ -78,7 +78,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Value"
+                placeholder="password"
                 secureTextEntry
                 editable={!loading}
               />

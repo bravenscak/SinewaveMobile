@@ -1,0 +1,42 @@
+#Maestro register test for Android
+appId: host.exp.sinewavemobile
+---
+# - launchApp
+#navigateTo: "Register"
+- assertVisible: "Don't have an account? Register here"
+- tapOn: "Don't have an account? Register here"
+
+#enter details
+- assertVisible: "First name"
+- tapOn: "ime"
+- inputText: "integration"
+
+- assertVisible: "Last name"
+- tapOn: "prezime"
+- inputText: "mobile"
+
+- assertVisible: "Username"
+- tapOn: "korisnicko ime"
+- inputText: "integration_mobile"
+
+- assertVisible: "E - mail"
+- tapOn: "e-mail"
+- inputText: "test@mail.com"
+
+- assertVisible: "Password"
+- tapOn: "password" 
+- inputText: "12345678"
+
+- assertVisible: "Register"
+- tapOn: "Register"
+
+#assert registration success
+- assertVisible: "Success"
+- tapOn: "OK"
+
+#assert user is logged in
+- assertVisible: "integration_mobile"
+- assertVisible: "Logout"
+- tapOn: "Logout"
+
+#test end

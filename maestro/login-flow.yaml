@@ -1,0 +1,12 @@
+# Maestro login test for Android
+appId: host.exp.sinewavemobile
+---
+#- launchApp
+- tapOn: "username"
+- inputText: "testU"
+
+- tapOn: "password"
+- inputText: "12345678"
+
+- tapOn: "Login"
+- assertVisible: "Loading songs..."

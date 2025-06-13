@@ -1,0 +1,19 @@
+# Maestro playlists test for Android
+appId: host.exp.sinewavemobile
+---
+# - launchApp
+- assertVisible: "Search songs..."
+- tapOn: "Search songs..."
+- inputText: "Summer Song"
+
+- assertVisible: "🔍"
+- tapOn: "🔍"
+
+- assertVisible: "➕"
+- tapOn: "➕"
+
+- assertVisible: "Integration Playlist"
+- tapOn: "Integration Playlist"
+
+- assertVisible: "Success"
+- tapOn: "OK"

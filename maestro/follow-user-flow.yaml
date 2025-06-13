@@ -1,0 +1,19 @@
+# Maestro playlists test for Android
+appId: host.exp.sinewavemobile
+---
+# - launchApp
+- assertVisible: "Users"
+- tapOn: "Users"
+
+- assertVisible: "Find user..."
+- tapOn: "Find user..."
+- inputText: "admin"
+
+- assertVisible: "🔍"
+- tapOn: "🔍"
+
+- assertVisible: "Follow"
+- tapOn: "Follow"
+
+- assertVisible: "Unfollow"
+- tapOn: "Unfollow"
