@@ -36,6 +36,16 @@ export default function MainScreen({ onLogout, navigation }) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const authenticated = await AuthService.isAuthenticated();
+      if (!authenticated) {
+        onLogout(); 
+        return; 
+      }
+    };
+
+    checkAuth();
+    
     const fetchUserData = async () => {
       try {
         const response = await AuthService.authenticatedFetch(
@@ -102,7 +112,7 @@ export default function MainScreen({ onLogout, navigation }) {
     setLoadingPlaylists(true);
     try {
       const response = await AuthService.authenticatedFetch(
-        `${API_URL}/playlists`
+        `${API_URL}/playlists/user`
       );
       if (!response.ok) throw new Error("Failed to fetch playlists");
       const data = await response.json();

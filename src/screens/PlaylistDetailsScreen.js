@@ -131,41 +131,6 @@ export default function PlaylistDetailsScreen({ route, navigation }) {
         }
       />
 
-      <View style={styles.content}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text>Loading songs...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={songs}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.songItem}>
-                <View style={styles.songInfo}>
-                  <Text style={styles.songTitle}>{item.title}</Text>
-                  <Text style={styles.artistName}>{item.artistName}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.playSongButton}
-                  onPress={() => {
-                    // Add play functionality here
-                  }}
-                >
-                  <Text style={styles.playSongButtonText}>▶</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            contentContainerStyle={styles.songsList}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text>No songs available</Text>
-              </View>
-            }
-          />
-        )}
-      </View>
-
       {/* Bottom Navigation */}
       <View style={styles.footer}>
         <TouchableOpacity

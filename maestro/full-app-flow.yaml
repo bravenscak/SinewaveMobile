@@ -1,0 +1,9 @@
+#Run all integration tests
+appId: host.exp.sinewavemobile
+---
+# - launchApp
+#- runFlow: "register-flow.yaml"
+- runFlow: "login-flow.yaml" 
+- runFlow: "make-playlist.yaml" 
+- runFlow: "search-song-flow.yaml" 
+- runFlow: "follow-user-flow.yaml" 

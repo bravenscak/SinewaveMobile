@@ -92,7 +92,7 @@ export default function RegisterScreen({
               style={styles.input}
               value={formData.firstname}
               onChangeText={(value) => handleInputChange("firstname", value)}
-              placeholder="Value"
+              placeholder="ime"
               autoCapitalize="words"
               editable={!loading}
             />
@@ -104,7 +104,7 @@ export default function RegisterScreen({
               style={styles.input}
               value={formData.lastname}
               onChangeText={(value) => handleInputChange("lastname", value)}
-              placeholder="Value"
+              placeholder="prezime"
               autoCapitalize="words"
               editable={!loading}
             />
@@ -116,7 +116,7 @@ export default function RegisterScreen({
               style={styles.input}
               value={formData.username}
               onChangeText={(value) => handleInputChange("username", value)}
-              placeholder="Value"
+              placeholder="korisnicko ime"
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
@@ -129,7 +129,7 @@ export default function RegisterScreen({
               style={styles.input}
               value={formData.email}
               onChangeText={(value) => handleInputChange("email", value)}
-              placeholder="Value"
+              placeholder="e-mail"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -143,23 +143,26 @@ export default function RegisterScreen({
               style={styles.input}
               value={formData.password}
               onChangeText={(value) => handleInputChange("password", value)}
-              placeholder="Value"
+              placeholder="password"
               secureTextEntry
               editable={!loading}
             />
           </View>
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Register</Text>
-            )}
-          </TouchableOpacity>
+                        style={[styles.button, loading && styles.buttonDisabled]}
+                        onPress={handleRegister}
+                        disabled={loading}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.buttonContent}>
+                          {loading ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                          ) : (
+                            <Text style={styles.buttonText}>Register</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.linkButton}

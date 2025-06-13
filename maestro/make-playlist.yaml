@@ -1,0 +1,18 @@
+# Maestro playlists test for Android
+appId: host.exp.sinewavemobile
+---
+# - launchApp
+- assertVisible: "Playlists"
+- tapOn: "Playlists"
+
+- assertVisible: "Create playlist"
+- tapOn: "Create playlist"
+
+- assertVisible: "Playlist name..."
+- tapOn: "Playlist name..."
+
+- inputText: "Integration Playlist"
+- tapOn: "Create Playlist"
+
+- assertVisible: "Songs"
+- tapOn: "Songs"
